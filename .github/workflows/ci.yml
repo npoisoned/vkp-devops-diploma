@@ -1,0 +1,60 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    - name: Lint Code (Flake8)
+      run: pip install flake8 && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Build Docker Image
+      id: build_image # ID для доступа к выводу этого шага
+      run: |
+        docker build -t flask-devops-app:${{ github.sha }} .
+        echo "image_name=flask-devops-app:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+    - name: Scan Docker Image with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'flask-devops-app:${{ github.sha }}'
+        format: 'table'
+        exit-code: '1' # Выходим с ошибкой, если найдены уязвимости (можешь поменять на 0 для начала)
+        severity: 'HIGH,CRITICAL' # Сканируем только высокие и критические уязвимости
+
+    - name: Install SSH Key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy to Server via SSH
+      run: |
+        chmod 600 /home/runner/.ssh/id_rsa # Убедимся, что права на ключ правильные
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          echo "Connected to server. Pulling latest code..."
+          cd /path/to/your/project/on/server # <--- ЗАМЕНИ ЭТОТ ПУТЬ НА РЕАЛЬНЫЙ ПУТЬ НА СЕРВЕРЕ!
+          # Остановка и удаление старых контейнеров (если есть)
+          docker-compose down || true
+          # Запуск новых контейнеров
+          docker-compose up -d --build
+          echo "Application deployed and running."
+        EOF
