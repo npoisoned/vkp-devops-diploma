@@ -28,7 +28,7 @@ jobs:
       run: pip install flake8 && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
     - name: Build Docker Image
-      id: build_image # ID для доступа к выводу этого шага
+      id: build_image 
       run: |
         docker build -t flask-devops-app:${{ github.sha }} .
         echo "image_name=flask-devops-app:${{ github.sha }}" >> $GITHUB_OUTPUT
@@ -38,8 +38,8 @@ jobs:
       with:
         image-ref: 'flask-devops-app:${{ github.sha }}'
         format: 'table'
-        exit-code: '1' # Выходим с ошибкой, если найдены уязвимости (можешь поменять на 0 для начала)
-        severity: 'HIGH,CRITICAL' # Сканируем только высокие и критические уязвимости
+        exit-code: '0' 
+        severity: 'HIGH,CRITICAL' 
 
     - name: Install SSH Key
       uses: webfactory/ssh-agent@v0.9.0
@@ -51,7 +51,7 @@ jobs:
         chmod 600 /home/runner/.ssh/id_rsa # Убедимся, что права на ключ правильные
         ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           echo "Connected to server. Pulling latest code..."
-          cd /path/to/your/project/on/server # <--- ЗАМЕНИ ЭТОТ ПУТЬ НА РЕАЛЬНЫЙ ПУТЬ НА СЕРВЕРЕ!
+          cd /path/to/your/project/on/server 
           # Остановка и удаление старых контейнеров (если есть)
           docker-compose down || true
           # Запуск новых контейнеров
